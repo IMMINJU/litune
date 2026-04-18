@@ -32,7 +32,15 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
   const [copied, setCopied] = useState(false)
 
   function handleShare() {
-    navigator.clipboard.writeText(window.location.href).then(() => {
+    const params = new URLSearchParams()
+    if (book.isbn) {
+      params.set('isbn', book.isbn)
+    } else {
+      params.set('title', book.title)
+    }
+    if (variation > 0) params.set('v', String(variation))
+    const url = `${window.location.origin}/result?${params.toString()}`
+    navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
