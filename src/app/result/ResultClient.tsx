@@ -50,7 +50,7 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
   const allKeywords = [...mood.spotify, ...mood.lastfm]
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-x-hidden">
+    <div className="min-h-dvh bg-black text-white relative overflow-x-hidden">
       {/* Cinematic color bleed from book cover */}
       <div
         className="fixed inset-0 pointer-events-none transition-all duration-700"

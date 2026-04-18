@@ -52,7 +52,7 @@ export default function Home() {
   }, [handleBarcodeDetected])
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-dvh bg-black text-white relative overflow-hidden">
       {/* Atmospheric gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-black to-black" />
 
@@ -68,7 +68,7 @@ export default function Home() {
         }}
       />
 
-      <div className="relative z-10 min-h-screen flex flex-col">
+      <div className="relative z-10 min-h-dvh flex flex-col">
         {/* Header */}
         <header className="px-5 pt-14 pb-5 md:px-10 md:pt-16 lg:px-16 space-y-5">
           <h1 className="text-xl md:text-2xl tracking-[0.2em] uppercase font-light">

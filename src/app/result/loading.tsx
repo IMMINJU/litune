@@ -1,6 +1,6 @@
 export default function ResultLoading() {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-dvh bg-black text-white">
       {/* Fixed header */}
       <header className="fixed top-0 inset-x-0 z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
         <div className="px-5 py-5 md:px-10 lg:px-16 flex items-center gap-3">
