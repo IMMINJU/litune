@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { extractDominantColor } from '@/lib/color'
+import { useSpotifyPlayer } from '@/hooks/useSpotifyPlayer'
 import MoodTag from '@/components/MoodTag'
 import PlaylistCard from '@/components/PlaylistCard'
 import TrackItem from '@/components/TrackItem'
+import SpotifyAuth from '@/components/SpotifyAuth'
+import NowPlayingBar from '@/components/NowPlayingBar'
 import type { Book } from '@/lib/book'
 import type { MoodKeywords } from '@/lib/claude'
 import type { Playlist } from '@/lib/spotify'
@@ -21,9 +24,11 @@ type Props = {
 
 export default function ResultClient({ book, mood, playlists, tracks, variation }: Props) {
   const router = useRouter()
+  const player = useSpotifyPlayer()
   const [dominantColor, setDominantColor] = useState('#1e1e1e')
   const [openPlaylist, setOpenPlaylist] = useState<string | null>(null)
   const [openTrack, setOpenTrack] = useState<string | null>(null)
+  const [activeUri, setActiveUri] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   function handleShare() {
@@ -47,11 +52,19 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
     return () => { document.documentElement.style.removeProperty('--dynamic-color') }
   }, [book.thumbnail])
 
+  // player.currentTrack 변화로 activeUri 동기화
+  useEffect(() => {
+    if (player.currentTrack) {
+      setActiveUri(`spotify:track:${player.currentTrack.id}`)
+    }
+  }, [player.currentTrack])
+
   const allKeywords = [...mood.spotify, ...mood.lastfm]
+  const hasNowPlaying = player.isReady && player.currentTrack
 
   return (
     <div className="min-h-dvh bg-black text-white relative overflow-x-hidden">
-      {/* Cinematic color bleed from book cover */}
+      {/* Cinematic color bleed */}
       <div
         className="fixed inset-0 pointer-events-none transition-all duration-700"
         style={{
@@ -87,33 +100,32 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <span className="text-xs tracking-[0.2em] uppercase text-zinc-500 font-light">
+            <span className="text-xs tracking-[0.2em] uppercase text-zinc-500 font-light flex-1">
               LITUNE
             </span>
+            <SpotifyAuth />
           </div>
         </header>
 
-        {/* Hero — book cover dominates */}
+        {/* Hero */}
         <section className="pt-24 md:pt-28 pb-12 px-5 md:px-10 lg:px-16">
           <div className="max-w-7xl mx-auto">
             <div className="grid md:grid-cols-[360px_1fr] lg:grid-cols-[440px_1fr] gap-10 md:gap-16 lg:gap-24 items-start">
-              {/* Book cover */}
               <div className="relative mx-auto md:mx-0 w-full max-w-[280px] md:max-w-none">
                 <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-2xl ring-1 ring-white/5">
                   {book.thumbnail ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={book.thumbnail} alt={book.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-zinc-900" />
                   )}
                 </div>
-                {/* Cinematic glow */}
                 <div
                   className="absolute -inset-12 -z-10 blur-[80px] opacity-35 transition-colors duration-700"
                   style={{ backgroundColor: dominantColor }}
                 />
               </div>
 
-              {/* Book info */}
               <div className="space-y-8 pt-0 md:pt-4">
                 <div className="space-y-3">
                   <h1 className="text-3xl md:text-5xl lg:text-6xl tracking-tight leading-[1.1] font-light">
@@ -125,7 +137,6 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
                   )}
                 </div>
 
-                {/* Mood tags */}
                 {allKeywords.length > 0 && (
                   <div className="space-y-3">
                     <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-light">
@@ -154,14 +165,23 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
                 </span>
               </div>
               <div className="flex flex-col">
-                {playlists.map((pl) => (
-                  <PlaylistCard
-                    key={pl.url}
-                    playlist={pl}
-                    isOpen={openPlaylist === pl.url}
-                    onToggle={() => setOpenPlaylist(openPlaylist === pl.url ? null : pl.url)}
-                  />
-                ))}
+                {playlists.map((pl) => {
+                  const plId = pl.url.match(/playlist\/([a-zA-Z0-9]+)/)?.[1]
+                  const plUri = plId ? `spotify:playlist:${plId}` : null
+                  return (
+                    <PlaylistCard
+                      key={pl.url}
+                      playlist={pl}
+                      isOpen={openPlaylist === pl.url}
+                      onToggle={() => {
+                        setOpenPlaylist(openPlaylist === pl.url ? null : pl.url)
+                        if (plUri) setActiveUri(plUri)
+                      }}
+                      player={player}
+                      isActive={!!plUri && activeUri === plUri}
+                    />
+                  )
+                })}
               </div>
             </div>
           </section>
@@ -177,6 +197,7 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
               <div>
                 {tracks.map((track, i) => {
                   const key = `${track.name}-${track.artist}`
+                  const isActive = !!(player.currentTrack && player.currentTrack.name === track.name)
                   return (
                     <TrackItem
                       key={key}
@@ -184,6 +205,8 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
                       index={i}
                       isOpen={openTrack === key}
                       onToggle={() => setOpenTrack(openTrack === key ? null : key)}
+                      player={player}
+                      isActive={isActive}
                     />
                   )
                 })}
@@ -203,7 +226,7 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
         )}
 
         {/* 액션 버튼 */}
-        <section className="px-5 md:px-10 lg:px-16 pb-24">
+        <section className={`px-5 md:px-10 lg:px-16 ${hasNowPlaying ? 'pb-40' : 'pb-24'}`}>
           <div className="max-w-7xl mx-auto flex justify-center gap-3">
             <button
               onClick={handleRecommendAgain}
@@ -237,6 +260,8 @@ export default function ResultClient({ book, mood, playlists, tracks, variation 
           </div>
         </section>
       </div>
+
+      <NowPlayingBar player={player} />
     </div>
   )
 }
