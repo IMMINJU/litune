@@ -12,14 +12,45 @@ type Props = {
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { title } = await searchParams
-  const bookTitle = title ? decodeURIComponent(title) : '책'
+  const { isbn, title } = await searchParams
+
+  let bookTitle = title ? decodeURIComponent(title) : null
+
+  if (isbn && !bookTitle) {
+    try {
+      const res = await fetch(
+        `https://openapi.naver.com/v1/search/book_adv.json?d_isbn=${encodeURIComponent(isbn)}`,
+        {
+          headers: {
+            'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID!,
+            'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET!,
+          },
+          next: { revalidate: 3600 },
+        }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        if (data.items?.[0]) bookTitle = normalizeNaverBook(data.items[0]).title
+      }
+    } catch {}
+  }
+
+  const label = bookTitle ?? '책'
+  const ogImage = isbn
+    ? `/api/og?isbn=${encodeURIComponent(isbn)}`
+    : `/api/og`
+
   return {
-    title: bookTitle,
-    description: `${bookTitle}의 분위기에 어울리는 음악 플레이리스트`,
+    title: label,
+    description: `${label}의 분위기에 어울리는 음악 플레이리스트`,
     openGraph: {
-      title: `${bookTitle} — Litune`,
-      description: `${bookTitle}의 분위기에 어울리는 음악 플레이리스트`,
+      title: `${label} — Litune`,
+      description: `${label}의 분위기에 어울리는 음악 플레이리스트`,
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [ogImage],
     },
   }
 }

@@ -1,16 +1,13 @@
 import { ImageResponse } from 'next/og'
+import { type NextRequest } from 'next/server'
 import { normalizeNaverBook } from '@/lib/book'
 
 export const runtime = 'edge'
-export const size = { width: 1200, height: 630 }
-export const contentType = 'image/png'
 
-type Props = {
-  searchParams: Promise<{ isbn?: string; title?: string }>
-}
-
-export default async function Image({ searchParams }: Props) {
-  const { isbn, title } = await searchParams
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const isbn = searchParams.get('isbn')
+  const title = searchParams.get('title')
 
   let book: { title: string; author: string; thumbnail?: string } | null = null
 
@@ -20,8 +17,8 @@ export default async function Image({ searchParams }: Props) {
         `https://openapi.naver.com/v1/search/book_adv.json?d_isbn=${encodeURIComponent(isbn)}`,
         {
           headers: {
-            'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID!,
-            'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET!,
+            'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID ?? '',
+            'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET ?? '',
           },
         }
       )
@@ -35,6 +32,7 @@ export default async function Image({ searchParams }: Props) {
   const bookTitle = book?.title ?? (title ? decodeURIComponent(title) : 'Litune')
   const author = book?.author ?? ''
   const thumbnail = book?.thumbnail
+  const truncatedTitle = bookTitle.length > 30 ? bookTitle.slice(0, 30) + '…' : bookTitle
 
   return new ImageResponse(
     (
@@ -51,9 +49,13 @@ export default async function Image({ searchParams }: Props) {
         {/* 배경 그라데이션 */}
         <div
           style={{
+            display: 'flex',
             position: 'absolute',
-            inset: 0,
-            background: 'radial-gradient(ellipse 80% 70% at 20% 30%, #1a1a3e40 0%, transparent 60%)',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'radial-gradient(ellipse 80% 70% at 20% 30%, rgba(26,26,62,0.25) 0%, rgba(0,0,0,0) 60%)',
           }}
         />
 
@@ -61,6 +63,7 @@ export default async function Image({ searchParams }: Props) {
         {thumbnail && (
           <div
             style={{
+              display: 'flex',
               width: 280,
               height: 420,
               marginLeft: 80,
@@ -68,7 +71,6 @@ export default async function Image({ searchParams }: Props) {
               borderRadius: 8,
               overflow: 'hidden',
               flexShrink: 0,
-              boxShadow: '0 25px 60px rgba(0,0,0,0.8)',
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,28 +93,24 @@ export default async function Image({ searchParams }: Props) {
             flex: 1,
           }}
         >
-          {/* 책 제목 */}
           <div
             style={{
-              fontSize: bookTitle.length > 20 ? 42 : 52,
+              display: 'flex',
+              fontSize: truncatedTitle.length > 20 ? 42 : 52,
               fontWeight: 300,
               color: '#ffffff',
               lineHeight: 1.2,
               letterSpacing: '-0.02em',
               marginBottom: 16,
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
             }}
           >
-            {bookTitle}
+            {truncatedTitle}
           </div>
 
-          {/* 저자 */}
           {author && (
             <div
               style={{
+                display: 'flex',
                 fontSize: 24,
                 color: '#a1a1aa',
                 fontWeight: 300,
@@ -123,13 +121,12 @@ export default async function Image({ searchParams }: Props) {
             </div>
           )}
 
-          {/* LITUNE 브랜딩 */}
           <div
             style={{
+              display: 'flex',
               fontSize: 14,
               color: '#52525b',
               letterSpacing: '0.2em',
-              textTransform: 'uppercase',
             }}
           >
             LITUNE
@@ -137,6 +134,6 @@ export default async function Image({ searchParams }: Props) {
         </div>
       </div>
     ),
-    { ...size }
+    { width: 1200, height: 630 }
   )
 }
