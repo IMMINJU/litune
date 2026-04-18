@@ -9,6 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://litune.vercel.app'),
   title: {
     default: "Litune",
     template: "%s — Litune",
@@ -47,8 +48,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${inter.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-bg text-text-primary antialiased">
+    <html lang="ko" className={`${inter.variable}`}>
+      <body className="min-h-dvh flex flex-col bg-bg text-text-primary antialiased">
         {children}
       </body>
     </html>
